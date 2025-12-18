@@ -4,7 +4,7 @@ import { account } from '../entity/account';
 import { targetUser } from '../entity/target-user';
 import { and, eq, notExists, sql } from 'drizzle-orm';
 import emailService from './email-service';
-import { BizError } from '../model/biz-error';
+import { BizError } from '../error/biz-error';
 
 const campaignService = {
 
