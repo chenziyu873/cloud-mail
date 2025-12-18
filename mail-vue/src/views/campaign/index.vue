@@ -198,10 +198,37 @@ onUnmounted(() => {
 
 async function loadAccounts() {
   try {
+    // 1. 加载数据库账号
     const data = await http.get('/account/list', { params: { num: 1, size: 100 } });
-    accounts.value = data.list || [];
+    const dbAccounts = (data.list || []).map(acc => ({
+      id: acc.accountId,
+      type: 'database',
+      label: `${acc.name} <${acc.email}>`,
+      email: acc.email
+    }));
+    
+    // 2. 加载阿里云地址
+    let aliyunAccounts = [];
+    try {
+      const settings = await http.get('/setting/query');
+      const aliyunConfig = JSON.parse(settings.aliyunConfig || '{}');
+      if (aliyunConfig.fromAddresses && aliyunConfig.fromAddresses.length > 0) {
+        aliyunAccounts = aliyunConfig.fromAddresses.map((addr, idx) => ({
+          id: `aliyun_${idx}`,
+          type: 'aliyun',
+          label: `[阿里云] ${addr}`,
+          email: addr
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to load Aliyun config', err);
+    }
+    
+    // 3. 合并显示
+    accounts.value = [...dbAccounts, ...aliyunAccounts];
+    
     if (accounts.value.length > 0 && !form.accountId) {
-      form.accountId = accounts.value[0].accountId;
+      form.accountId = accounts.value[0].id;
     }
   } catch (err) {
     console.error('Failed to load accounts', err);
@@ -213,10 +240,14 @@ async function getStats() {
     availableCount.value = 0;
     return;
   }
+  
   loadingStats.value = true;
   try {
+    const selectedAccount = accounts.value.find(a => a.id === form.accountId);
+    const actualAccountId = selectedAccount?.type === 'database' ? selectedAccount.id : -1;
+    
     const params = {
-      accountId: form.accountId,
+      accountId: actualAccountId,
       targetUserIds: form.allTargets ? '' : form.targetUserIds.join(',')
     };
     const data = await http.get('/campaign/stats', { params });
@@ -278,16 +309,26 @@ async function startCampaign() {
   sentCount.value = 0;
   totalToSent.value = availableCount.value;
   
+  // 获取选中的账号信息
+  const selectedAccount = accounts.value.find(a => a.id === form.accountId);
+  
   while (running.value) {
     try {
       const payload = {
-        accountId: form.accountId,
-        senderName: form.senderName,
         subject: form.subject,
         content: form.content,
+        senderName: form.senderName,
         batchSize: form.batchSize,
         targetUserIds: form.allTargets ? [] : form.targetUserIds
       };
+      
+      // 根据账号类型设置不同的参数
+      if (selectedAccount.type === 'aliyun') {
+        payload.fromAddress = selectedAccount.email;
+      } else {
+        payload.accountId = selectedAccount.id;
+      }
+      
       const data = await http.post('/campaign/send', payload);
       sentCount.value += data.sent;
       
