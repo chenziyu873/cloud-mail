@@ -243,7 +243,7 @@ function clickLogout() {
 }
 
 function formatName(email) {
-  return email[0]?.toUpperCase() || ''
+  return email ? email[0]?.toUpperCase() : ''
 }
 
 </script>

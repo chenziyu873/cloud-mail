@@ -16,7 +16,7 @@ import saltHashUtils from '../utils/crypto-utils';
 import constant from '../const/constant';
 import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
-import {oauth} from "../entity/oauth";
+import { oauth } from "../entity/oauth";
 import oauthService from "./oauth-service";
 
 const userService = {
@@ -24,6 +24,10 @@ const userService = {
 	async loginUserInfo(c, userId) {
 
 		const userRow = await userService.selectById(c, userId);
+
+		if (!userRow) {
+			throw new BizError(t('notExistUser'), 401);
+		}
 
 		const [account, roleRow, permKeys] = await Promise.all([
 			accountService.selectByEmailIncludeDel(c, userRow.email),
@@ -166,7 +170,7 @@ const userService = {
 			emailService.selectUserEmailCountList(c, userIds, emailConst.type.SEND, isDel.DELETE),
 			accountService.selectUserAccountCountList(c, userIds),
 			accountService.selectUserAccountCountList(c, userIds, isDel.DELETE),
-			roleService.selectByIdsHasPermKey(c, types,'email:send')
+			roleService.selectByIdsHasPermKey(c, types, 'email:send')
 		]);
 
 		const receiveMap = Object.fromEntries(emailCounts.map(item => [item.userId, item.count]));
@@ -219,7 +223,7 @@ const userService = {
 
 		const activeIp = reqUtils.getIp(c);
 
-		const {os, browser, device} = reqUtils.getUserAgent(c);
+		const { os, browser, device } = reqUtils.getUserAgent(c);
 
 		const params = {
 			os,
@@ -361,7 +365,7 @@ const userService = {
 
 	listByRegKeyId(c, regKeyId) {
 		return orm(c)
-			.select({email: user.email,createTime: user.createTime})
+			.select({ email: user.email, createTime: user.createTime })
 			.from(user)
 			.where(eq(user.regKeyId, regKeyId))
 			.orderBy(desc(user.userId))
