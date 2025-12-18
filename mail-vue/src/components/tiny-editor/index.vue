@@ -80,9 +80,11 @@ function initTinyMCE() {
     showLoading.value = true;
     const script = document.createElement('script');
     script.src = '/tinymce/tinymce.min.js';
-    script.onload = () => initEditor();
+    script.onload = () => {
+        initEditor();
+        showLoading.value = false;
+    };
     document.head.appendChild(script);
-    showLoading.value = false;
   }
 }
 

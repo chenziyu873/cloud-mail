@@ -36,31 +36,31 @@
              </el-select>
            </div>
         </el-form-item>
+        <el-form-item label="选择发件账号">
+          <el-select v-model="form.accountId" placeholder="请选择发件账号" style="width: 100%" @change="getStats">
+            <el-option
+                v-for="acc in accounts"
+                :key="acc.accountId"
+                :label="`${acc.name} <${acc.email}>`"
+                :value="acc.accountId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="$t('subject')">
           <el-input v-model="form.subject" :placeholder="$t('subject')" />
         </el-form-item>
+        <el-form-item :label="$t('senderName')">
+          <el-input v-model="form.senderName" :placeholder="$t('senderNamePlaceholder')" />
+        </el-form-item>
         <el-form-item :label="$t('content')">
            <div style="height: 400px; width: 100%;">
-             <tinyEditor ref="editorRef" :def-value="''" @change="handleEditorChange" />
+             <tinyEditor editor-id="campaign-editor" ref="editorRef" :def-value="form.content" @change="handleEditorChange" />
            </div>
         </el-form-item>
         
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item :label="$t('repeatCount')">
-              <el-input-number v-model="form.repeatCount" :min="1" :max="10" @change="getStats" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('batchDelay')">
-              <el-input-number v-model="form.batchDelay" :min="0" :step="500" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <div class="options" style="margin-bottom: 20px;">
-          <el-checkbox v-model="form.allowRepeat" @change="getStats">{{ $t('allowRepeatSend') }}</el-checkbox>
-        </div>
+        <el-form-item :label="$t('batchDelay')">
+          <el-input-number v-model="form.batchDelay" :min="0" :step="500" />
+        </el-form-item>
         
         <div class="actions">
           <el-button
@@ -72,6 +72,12 @@
             <Icon icon="mdi:play" width="18" height="18" style="margin-right: 4px" />
             {{$t('startCampaign')}}
           </el-button>
+          
+          <el-button type="danger" @click="stopCampaign" :disabled="!running">
+            <Icon icon="mdi:stop" width="18" height="18" style="margin-right: 4px" />
+            Stop
+          </el-button>
+          
           <el-button @click="getStats" :loading="loadingStats">
             <Icon icon="mdi:refresh" width="18" height="18" />
           </el-button>
@@ -118,7 +124,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, computed, onUnmounted } from 'vue'
+import { onMounted, reactive, ref, computed, onUnmounted, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import http from '@/axios/index.js'
@@ -137,20 +143,40 @@ const editorRef = ref(null)
 
 const loadingTargets = ref(false)
 const targetUserOptions = ref([])
+const accounts = ref([])
 const logs = ref([])
 let logTimer = null
 
 const form = reactive({
+  accountId: null,
   subject: '',
+  senderName: '',
   content: '',
   text: '',
   batchSize: 5,
-  repeatCount: 1,
   batchDelay: 1000,
-  allowRepeat: false,
   allTargets: true,
   targetUserIds: []
 })
+
+// 从本地存储恢复表单数据
+const STORAGE_KEY = 'campaign_form_data';
+function loadFormData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(form, parsed);
+    }
+  } catch (e) {
+    console.error('Failed to load form data', e);
+  }
+}
+
+// 监听表单变化并保存
+watch(form, (newVal) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal));
+}, { deep: true });
 
 const percentage = computed(() => {
   const totalSlots = totalToSent.value * form.repeatCount
@@ -159,29 +185,46 @@ const percentage = computed(() => {
 })
 
 onMounted(() => {
-  getStats()
-  getLogs()
-  // 启动日志轮询
-  logTimer = setInterval(getLogs, 5000)
-})
+  loadFormData();
+  loadAccounts();
+  getStats();
+  getLogs();
+  logTimer = setInterval(getLogs, 5000);
+});
 
 onUnmounted(() => {
-  if (logTimer) clearInterval(logTimer)
-})
+  if (logTimer) clearInterval(logTimer);
+});
+
+async function loadAccounts() {
+  try {
+    const data = await http.get('/account/list', { params: { num: 1, size: 100 } });
+    accounts.value = data.list || [];
+    if (accounts.value.length > 0 && !form.accountId) {
+      form.accountId = accounts.value[0].accountId;
+    }
+  } catch (err) {
+    console.error('Failed to load accounts', err);
+  }
+}
 
 async function getStats() {
-  loadingStats.value = true
+  if (!form.accountId) {
+    availableCount.value = 0;
+    return;
+  }
+  loadingStats.value = true;
   try {
     const params = {
-      allowRepeat: form.allowRepeat,
+      accountId: form.accountId,
       targetUserIds: form.allTargets ? '' : form.targetUserIds.join(',')
-    }
-    const data = await http.get('/campaign/stats', { params })
-    availableCount.value = data.count
+    };
+    const data = await http.get('/campaign/stats', { params });
+    availableCount.value = data.count;
   } catch (error) {
-    console.error(error)
+    console.error(error);
   } finally {
-    loadingStats.value = false
+    loadingStats.value = false;
   }
 }
 
@@ -218,43 +261,57 @@ function handleEditorChange(content, text) {
   form.text = text
 }
 
+function stopCampaign() {
+  running.value = false;
+  status.value = 'stopped';
+  ElMessage.info('已停止群发');
+}
+
 async function startCampaign() {
-  running.value = true
-  status.value = 'processing'
-  sentCount.value = 0
-  totalToSent.value = availableCount.value
+  if (!form.accountId) {
+    ElMessage.warning('请先选择发件账号');
+    return;
+  }
+  
+  running.value = true;
+  status.value = 'processing';
+  sentCount.value = 0;
+  totalToSent.value = availableCount.value;
   
   while (running.value) {
     try {
       const payload = {
-        ...form,
+        accountId: form.accountId,
+        senderName: form.senderName,
+        subject: form.subject,
+        content: form.content,
+        batchSize: form.batchSize,
         targetUserIds: form.allTargets ? [] : form.targetUserIds
-      }
-      const data = await http.post('/campaign/send', payload)
-      sentCount.value += data.sent
+      };
+      const data = await http.post('/campaign/send', payload);
+      sentCount.value += data.sent;
       
       if (data.status === 'finished' || data.sent === 0) {
-        running.value = false
-        status.value = 'finished'
-        ElMessage.success('Campaign Completed')
-        break
+        running.value = false;
+        status.value = 'finished';
+        ElMessage.success('群发完成！');
+        break;
       }
       
-      // 触发日志手动刷新
-      getLogs()
+      getLogs();
 
-      // 排队延迟逻辑：根据 batchDelay 等待
       if (form.batchDelay > 0) {
-        await new Promise(resolve => setTimeout(resolve, form.batchDelay))
+        await new Promise(resolve => setTimeout(resolve, form.batchDelay));
       }
     } catch (error) {
-      console.error(error)
-      running.value = false
-      status.value = 'error'
-      break
+      console.error(error);
+      running.value = false;
+      status.value = 'error';
+      ElMessage.error('发送失败: ' + error.message);
+      break;
     }
     
-    await getStats()
+    await getStats();
   }
 }
 

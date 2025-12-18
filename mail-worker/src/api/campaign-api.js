@@ -4,11 +4,18 @@ import result from '../model/result';
 import userContext from '../security/user-context';
 
 app.get('/campaign/stats', async (c) => {
-    const { allowRepeat, targetUserIds } = c.req.query();
+    const { accountId, targetUserIds } = c.req.query();
     const ids = targetUserIds ? targetUserIds.split(',').map(Number) : [];
-    const data = await campaignService.getAvailablePairs(c, userContext.getUserId(c), allowRepeat === 'true', ids);
+    const accId = Number(accountId);
+    if (!accId) {
+        return c.json(result.ok({ count: 0 }));
+    }
+    const data = await campaignService.getAvailableTargets(c, userContext.getUserId(c), accId, ids);
     return c.json(result.ok(data));
 });
+
+// 移除不再需要的 max-id 端点
+// app.get('/campaign/max-id', ...)  已删除
 
 app.post('/campaign/send', async (c) => {
     const params = await c.req.json();

@@ -20,6 +20,8 @@ const zh = {
     fromAccount: '发件账号',
     toTarget: '目标用户',
     executionTime: '执行时间',
+    senderName: '发件人名称',
+    senderNamePlaceholder: '例如: 营销团队、客服中心等',
     selectTargets: '选择目标用户',
     allTargets: '全选 (号池内所有用户)',
     specificTargets: '指定用户',

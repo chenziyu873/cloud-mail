@@ -20,6 +20,8 @@ const en = {
     fromAccount: 'Account',
     toTarget: 'Target',
     executionTime: 'Time',
+    senderName: 'Sender Name',
+    senderNamePlaceholder: 'e.g., Marketing Team, Support Center',
     selectTargets: 'Select Targets',
     allTargets: 'All Targets (Full Pool)',
     specificTargets: 'Specific Targets',
