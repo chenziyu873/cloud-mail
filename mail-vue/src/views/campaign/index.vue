@@ -7,6 +7,52 @@
       </div>
     </div>
 
+    <!-- 阿里云配置区域 -->
+    <el-card class="config-card" shadow="never" style="margin-bottom: 20px;">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>阿里云邮件推送配置</span>
+          <el-button @click="showAliyunConfig = !showAliyunConfig" text>
+            {{ showAliyunConfig ? '收起' : '展开' }}
+          </el-button>
+        </div>
+      </template>
+      
+      <div v-show="showAliyunConfig">
+        <el-form label-position="top">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="AccessKey ID">
+                <el-input v-model="aliyunForm.accessKeyId" placeholder="LTAI5t..." />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="AccessKey Secret">
+                <el-input v-model="aliyunForm.accessKeySecret" type="password" placeholder="O55nw2..." show-password />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-form-item label="发信地址（最多5个）">
+            <div v-for="(addr, index) in aliyunForm.fromAddresses" :key="index" style="margin-bottom: 10px;">
+              <el-input v-model="aliyunForm.fromAddresses[index]" placeholder="example@yourdomain.com">
+                <template #append>
+                  <el-button @click="removeAddress(index)" :disabled="aliyunForm.fromAddresses.length <= 1">删除</el-button>
+                </template>
+              </el-input>
+            </div>
+            <el-button @click="addAddress" :disabled="aliyunForm.fromAddresses.length >= 5" style="width: 100%;">
+              + 添加地址
+            </el-button>
+          </el-form-item>
+          
+          <el-button type="primary" @click="saveAliyunConfig" :loading="savingConfig">
+            保存配置
+          </el-button>
+        </el-form>
+      </div>
+    </el-card>
+
     <el-card class="editor-card" shadow="never">
       <el-form label-position="top">
         <el-form-item :label="$t('selectTargets')">
@@ -147,6 +193,16 @@ const accounts = ref([])
 const logs = ref([])
 let logTimer = null
 
+// 阿里云配置状态
+const showAliyunConfig = ref(false)
+const savingConfig = ref(false)
+const aliyunForm = reactive({
+  accessKeyId: '',
+  accessKeySecret: '',
+  region: 'cn-hangzhou',
+  fromAddresses: ['']
+})
+
 const form = reactive({
   accountId: null,
   subject: '',
@@ -186,6 +242,7 @@ const percentage = computed(() => {
 
 onMounted(() => {
   loadFormData();
+  loadAliyunConfig();
   loadAccounts();
   getStats();
   getLogs();
@@ -256,6 +313,75 @@ async function getStats() {
     console.error(error);
   } finally {
     loadingStats.value = false;
+  }
+}
+
+// 加载阿里云配置
+async function loadAliyunConfig() {
+  try {
+    const settings = await http.get('/setting/query');
+    const config = JSON.parse(settings.aliyunConfig || '{}');
+    if (config.accessKeyId) {
+      aliyunForm.accessKeyId = config.accessKeyId;
+      aliyunForm.accessKeySecret = config.accessKeySecret;
+      aliyunForm.region = config.region || 'cn-hangzhou';
+      aliyunForm.fromAddresses = config.fromAddresses || [''];
+    }
+  } catch (err) {
+    console.error('Failed to load Aliyun config', err);
+  }
+}
+
+// 保存阿里云配置
+async function saveAliyunConfig() {
+  if (!aliyunForm.accessKeyId || !aliyunForm.accessKeySecret) {
+    ElMessage.warning('请填写 AccessKey ID 和 Secret');
+    return;
+  }
+  
+  const validAddresses = aliyunForm.fromAddresses.filter(addr => addr.trim());
+  if (validAddresses.length === 0) {
+    ElMessage.warning('请至少添加一个发信地址');
+    return;
+  }
+  
+  savingConfig.value = true;
+  try {
+    const config = {
+      accessKeyId: aliyunForm.accessKeyId,
+      accessKeySecret: aliyunForm.accessKeySecret,
+      region: aliyunForm.region,
+      fromAddresses: validAddresses
+    };
+    
+    await http.post('/setting/update', {
+      aliyunConfig: JSON.stringify(config)
+    });
+    
+    ElMessage.success('配置保存成功！');
+    showAliyunConfig.value = false;
+    
+    // 重新加载账号列表
+    await loadAccounts();
+  } catch (err) {
+    console.error('Failed to save Aliyun config', err);
+    ElMessage.error('保存失败: ' + err.message);
+  } finally {
+    savingConfig.value = false;
+  }
+}
+
+// 添加发信地址
+function addAddress() {
+  if (aliyunForm.fromAddresses.length < 5) {
+    aliyunForm.fromAddresses.push('');
+  }
+}
+
+// 删除发信地址
+function removeAddress(index) {
+  if (aliyunForm.fromAddresses.length > 1) {
+    aliyunForm.fromAddresses.splice(index, 1);
   }
 }
 
