@@ -13,13 +13,11 @@
           <el-input v-model="form.subject" :placeholder="$t('subject')" />
         </el-form-item>
         <el-form-item :label="$t('content')">
-          <el-input
-              v-model="form.content"
-              type="textarea"
-              :rows="10"
-              placeholder="HTML Content Supported"
-          />
+           <tinyEditor ref="editor" @change="handleEditorChange" />
         </el-form-item>
+        <div class="options" style="margin-bottom: 20px;">
+          <el-checkbox v-model="form.allowRepeat" @change="getStats">{{ $t('allowRepeatSend') }}</el-checkbox>
+        </div>
         <div class="actions">
           <el-button
               type="primary"
@@ -61,6 +59,7 @@ import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import http from '@/axios/index.js'
 import { ElMessage } from 'element-plus'
+import tinyEditor from '@/components/tiny-editor/index.vue'
 
 const { t } = useI18n()
 const loadingStats = ref(false)
@@ -69,11 +68,14 @@ const availableCount = ref(0)
 const sentCount = ref(0)
 const totalToSent = ref(0)
 const status = ref('idle')
+const editor = ref(null)
 
 const form = reactive({
   subject: '',
   content: '',
-  batchSize: 5
+  text: '',
+  batchSize: 5,
+  allowRepeat: false
 })
 
 const percentage = computed(() => {
@@ -88,13 +90,18 @@ onMounted(() => {
 async function getStats() {
   loadingStats.value = true
   try {
-    const data = await http.get('/campaign/stats')
+    const data = await http.get('/campaign/stats', { params: { allowRepeat: form.allowRepeat } })
     availableCount.value = data.count
   } catch (error) {
     console.error(error)
   } finally {
     loadingStats.value = false
   }
+}
+
+function handleEditorChange(content, text) {
+  form.content = content
+  form.text = text
 }
 
 async function startCampaign() {
@@ -133,7 +140,7 @@ async function startCampaign() {
 <style lang="scss" scoped>
 .campaign-container {
   padding: 20px;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
 
   .header {

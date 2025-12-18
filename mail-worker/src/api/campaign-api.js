@@ -4,7 +4,8 @@ import result from '../model/result';
 import userContext from '../security/user-context';
 
 app.get('/campaign/stats', async (c) => {
-    const data = await campaignService.getAvailablePairs(c, userContext.getUserId(c));
+    const { allowRepeat } = c.req.query();
+    const data = await campaignService.getAvailablePairs(c, userContext.getUserId(c), allowRepeat === 'true');
     return c.json(result.ok(data));
 });
 

@@ -32,8 +32,8 @@ const targetUserService = {
         const validEmails = emails.filter(email => verifyUtils.isEmail(email));
         if (validEmails.length === 0) return { count: 0 };
 
-        // 分片插入，防止 SQL 过长
-        const chunkSize = 100;
+        // 分片插入，防止 SQL 过长 (SQLite 变量限制为 1000)
+        const chunkSize = 10;
         let importedCount = 0;
 
         for (let i = 0; i < validEmails.length; i += chunkSize) {
@@ -57,6 +57,11 @@ const targetUserService = {
 
     async clear(c, userId) {
         await orm(c).delete(targetUser).where(eq(targetUser.userId, userId)).run();
+    },
+
+    async add(c, email, userId) {
+        if (!verifyUtils.isEmail(email)) throw new Error('Invalid Email');
+        await orm(c).insert(targetUser).values({ email, userId }).run();
     }
 };
 

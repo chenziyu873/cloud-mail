@@ -312,8 +312,9 @@ const accountService = {
 			});
 		}
 
-		// 分片插入 D1，防止单次请求过载
-		const chunkSize = 100;
+		// 分片插入，防止 SQL 过长 (SQLite 变量限制为 1000)
+		// 使用 10 作为分片大小以确保即使字段极多也不会超过变量限制
+		const chunkSize = 10;
 		for (let i = 0; i < accountEmails.length; i += chunkSize) {
 			const chunk = accountEmails.slice(i, i + chunkSize);
 			await orm(c).insert(account).values(chunk).run();

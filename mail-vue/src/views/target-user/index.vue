@@ -3,6 +3,10 @@
     <div class="header">
       <div class="title">{{$t('targetUserPool')}}</div>
       <div class="actions">
+        <el-button @click="showAddDialog = true" type="primary" style="margin-right: 12px">
+          <Icon icon="mdi:pencil-plus-outline" width="18" height="18" style="margin-right: 4px" />
+          {{$t('addEmail')}}
+        </el-button>
         <el-upload
             ref="uploadRef"
             action="#"
@@ -12,7 +16,7 @@
             accept=".txt,.json"
         >
           <template #trigger>
-            <el-button type="primary">
+            <el-button type="success">
               <Icon icon="mdi:file-import-outline" width="18" height="18" style="margin-right: 4px" />
               {{$t('importEmails')}}
             </el-button>
@@ -22,7 +26,7 @@
           <Icon icon="mdi:trash-can-outline" width="18" height="18" style="margin-right: 4px" />
           {{$t('clearPool')}}
         </el-button>
-        <el-button type="success" @click="copyAllEmails">
+        <el-button type="info" @click="copyAllEmails">
           <Icon icon="mdi:content-copy" width="18" height="18" style="margin-right: 4px" />
           {{$t('copyAll')}}
         </el-button>
@@ -47,7 +51,6 @@
     </div>
 
     <el-table :data="list" style="width: 100%; margin-top: 20px" v-loading="loading">
-      <el-table-column type="selection" width="55" />
       <el-table-column prop="email" :label="$t('emailAccount')" min-width="200" />
       <el-table-column prop="createTime" :label="$t('tabRegisteredAt')" width="180">
         <template #default="scope">
@@ -71,6 +74,19 @@
           @current-change="getList"
       />
     </div>
+
+    <!-- 添加对话框 -->
+    <el-dialog v-model="showAddDialog" :title="$t('addEmail')" width="400px">
+      <el-form label-position="top">
+        <el-form-item :label="$t('emailAccount')">
+          <el-input v-model="addForm.email" placeholder="example@domain.com" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddDialog = false">{{$t('cancel')}}</el-button>
+        <el-button type="primary" @click="handleAdd" :loading="addLoading">{{$t('confirm')}}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -94,6 +110,12 @@ const params = reactive({
   email: ''
 })
 
+const showAddDialog = ref(false)
+const addLoading = ref(false)
+const addForm = reactive({
+  email: ''
+})
+
 onMounted(() => {
   getList()
 })
@@ -108,6 +130,22 @@ async function getList() {
     console.error(error)
   } finally {
     loading.value = false
+  }
+}
+
+async function handleAdd() {
+  if (!addForm.email) return
+  addLoading.value = true
+  try {
+    await http.post('/target-user/add', addForm)
+    ElMessage.success(t('addSuccessMsg'))
+    showAddDialog.value = false
+    addForm.email = ''
+    getList()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    addLoading.value = false
   }
 }
 

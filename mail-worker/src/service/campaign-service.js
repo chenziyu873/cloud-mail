@@ -9,14 +9,16 @@ import BizError from '../error/biz-error';
 const campaignService = {
 
     /**
-     * 获取当前用户下，尚未互相发送过的 (号池账号, 目标用户) 待发对。
+     * 获取当前用户下，号池账号和目标用户的组合总数（支持重复发送则为笛卡尔积，否则排除已发送）。
      */
-    async getAvailablePairs(c, userId) {
-        // 逻辑：寻找所有号池账号 A 和 目标用户 T，且 (A, T) 不在 send_log 中
+    async getAvailablePairs(c, userId, allowRepeat = false) {
         const db = orm(c);
+        const repeatFilter = allowRepeat ? sql`1=1` : sql`NOT EXISTS (
+				  SELECT 1 FROM send_log s 
+				  WHERE s.account_id = a.account_id 
+				    AND s.target_user_id = t.target_user_id
+			  )`;
 
-        // 我们可以限制一次返回的数量，或者仅返回总数
-        // 这里简单处理：直接聚合计算可用对数
         const query = sql`
 			SELECT count(*) as count
 			FROM account a, target_user t
@@ -24,11 +26,7 @@ const campaignService = {
 			  AND a.is_pool = 1 
 			  AND a.is_del = 0
 			  AND t.user_id = ${userId}
-			  AND NOT EXISTS (
-				  SELECT 1 FROM send_log s 
-				  WHERE s.account_id = a.account_id 
-				    AND s.target_user_id = t.target_user_id
-			  )
+			  AND ${repeatFilter}
 		`;
         const result = await db.all(query);
         return { count: result[0]?.count || 0 };
@@ -38,8 +36,14 @@ const campaignService = {
      * 执行一批发送任务
      */
     async sendBatch(c, params, userId) {
-        const { subject, content, batchSize = 10 } = params;
+        const { subject, content, batchSize = 10, allowRepeat = false } = params;
         const db = orm(c);
+
+        const repeatFilter = allowRepeat ? sql`1=1` : sql`NOT EXISTS (
+				  SELECT 1 FROM send_log s 
+				  WHERE s.account_id = a.account_id 
+				    AND s.target_user_id = t.target_user_id
+			  )`;
 
         // 获取一批待发的对子
         const pairs = await db.all(sql`
@@ -49,11 +53,7 @@ const campaignService = {
 			  AND a.is_pool = 1 
 			  AND a.is_del = 0
 			  AND t.user_id = ${userId}
-			  AND NOT EXISTS (
-				  SELECT 1 FROM send_log s 
-				  WHERE s.account_id = a.account_id 
-				    AND s.target_user_id = t.target_user_id
-			  )
+			  AND ${repeatFilter}
 			LIMIT ${batchSize}
 		`);
 

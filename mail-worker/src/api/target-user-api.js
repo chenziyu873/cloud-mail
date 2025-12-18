@@ -14,6 +14,12 @@ app.post('/target-user/import', async (c) => {
     return c.json(result.ok(data));
 });
 
+app.post('/target-user/add', async (c) => {
+    const { email } = await c.req.json();
+    await targetUserService.add(c, email, userContext.getUserId(c));
+    return c.json(result.ok());
+});
+
 app.delete('/target-user/delete', async (c) => {
     await targetUserService.delete(c, c.req.query(), userContext.getUserId(c));
     return c.json(result.ok());

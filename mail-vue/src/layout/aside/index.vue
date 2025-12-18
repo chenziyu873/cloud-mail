@@ -33,7 +33,7 @@
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'mailbox-pool'})" index="mailbox-pool"
                       :class="route.meta.name === 'mailbox-pool' ? 'choose-item' : ''">
-          <Icon icon="ic:outline-Sd-storage" width="20" height="20" />
+          <Icon icon="mdi:inbox-multiple-outline" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('mailboxPool')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'target-user'})" index="target-user"
