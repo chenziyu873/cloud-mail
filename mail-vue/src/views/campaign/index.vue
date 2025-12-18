@@ -354,7 +354,7 @@ async function saveAliyunConfig() {
       fromAddresses: validAddresses
     };
     
-    await http.post('/setting/update', {
+    await http.put('/setting/set', {
       aliyunConfig: JSON.stringify(config)
     });
     
