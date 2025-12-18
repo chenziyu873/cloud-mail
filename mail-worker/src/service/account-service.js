@@ -6,7 +6,7 @@ import emailService from './email-service';
 import orm from '../entity/orm';
 import account from '../entity/account';
 import { and, asc, eq, gt, inArray, count, sql, ne } from 'drizzle-orm';
-import {accountConst, isDel, settingConst} from '../const/entity-const';
+import { accountConst, isDel, settingConst } from '../const/entity-const';
 import settingService from './setting-service';
 import turnstileService from './turnstile-service';
 import roleService from './role-service';
@@ -17,7 +17,7 @@ const accountService = {
 
 	async add(c, params, userId) {
 
-		const { addEmailVerify , addEmail, manyEmail, addVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c);
+		const { addEmailVerify, addEmail, manyEmail, addVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c);
 
 		let { email, token } = params;
 
@@ -40,7 +40,7 @@ const accountService = {
 		}
 
 		if (emailUtils.getName(email).length < minEmailPrefix) {
-			throw new BizError(t('minEmailPrefix', { msg: minEmailPrefix } ));
+			throw new BizError(t('minEmailPrefix', { msg: minEmailPrefix }));
 		}
 
 		if (emailPrefixFilter.some(content => emailUtils.getName(email).includes(content))) {
@@ -64,11 +64,11 @@ const accountService = {
 
 			if (roleRow.accountCount > 0) {
 				const userAccountCount = await accountService.countUserAccount(c, userId)
-				if(userAccountCount >= roleRow.accountCount) throw new BizError(t('accountLimit'), 403);
+				if (userAccountCount >= roleRow.accountCount) throw new BizError(t('accountLimit'), 403);
 			}
 
-			if(!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
-				throw new BizError(t('noDomainPermAdd'),403)
+			if (!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
+				throw new BizError(t('noDomainPermAdd'), 403)
 			}
 
 		}
@@ -83,7 +83,7 @@ const accountService = {
 		if (addEmailVerify === settingConst.addEmailVerify.COUNT) {
 			addVerifyOpen = await verifyRecordService.isOpenAddVerify(c, addVerifyCount);
 			if (addVerifyOpen) {
-				await turnstileService.verify(c,token)
+				await turnstileService.verify(c, token)
 			}
 		}
 
@@ -165,7 +165,7 @@ const accountService = {
 
 	async physicsDeleteByUserIds(c, userIds) {
 		await emailService.physicsDeleteUserIds(c, userIds);
-		await orm(c).delete(account).where(inArray(account.userId,userIds)).run();
+		await orm(c).delete(account).where(inArray(account.userId, userIds)).run();
 	},
 
 	async selectUserAccountCountList(c, userIds, del = isDel.NORMAL) {
@@ -184,16 +184,16 @@ const accountService = {
 	},
 
 	async countUserAccount(c, userId) {
-		const { num } = await orm(c).select({num: count()}).from(account).where(and(eq(account.userId, userId),eq(account.isDel, isDel.NORMAL))).get();
+		const { num } = await orm(c).select({ num: count() }).from(account).where(and(eq(account.userId, userId), eq(account.isDel, isDel.NORMAL))).get();
 		return num;
 	},
 
 	async restoreByEmail(c, email) {
-		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.email, email)).run();
+		await orm(c).update(account).set({ isDel: isDel.NORMAL }).where(eq(account.email, email)).run();
 	},
 
 	async restoreByUserId(c, userId) {
-		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.userId, userId)).run();
+		await orm(c).update(account).set({ isDel: isDel.NORMAL }).where(eq(account.userId, userId)).run();
 	},
 
 	async setName(c, params, userId) {
@@ -201,7 +201,7 @@ const accountService = {
 		if (name.length > 30) {
 			throw new BizError(t('usernameLengthLimit'));
 		}
-		await orm(c).update(account).set({name}).where(and(eq(account.userId, userId),eq(account.accountId, accountId))).run();
+		await orm(c).update(account).set({ name }).where(and(eq(account.userId, userId), eq(account.accountId, accountId))).run();
 	},
 
 	async allAccount(c, params) {
@@ -221,7 +221,7 @@ const accountService = {
 
 		const userRow = await userService.selectByIdIncludeDel(c, userId);
 
-		const list = await orm(c).select().from(account).where(and(eq(account.userId, userId),ne(account.email,userRow.email))).limit(size).offset(num);
+		const list = await orm(c).select().from(account).where(and(eq(account.userId, userId), ne(account.email, userRow.email))).limit(size).offset(num);
 		const { total } = await orm(c).select({ total: count() }).from(account).where(eq(account.userId, userId)).get();
 
 		return { list, total }
@@ -242,6 +242,76 @@ const accountService = {
 		}
 		await orm(c).update(account).set({ allReceive: accountConst.allReceive.CLOSE }).where(eq(account.userId, userId)).run();
 		await orm(c).update(account).set({ allReceive: accountRow.allReceive ? 0 : 1 }).where(eq(account.accountId, accountId)).run();
+	},
+
+	async poolList(c, params, userId) {
+		let { num, size } = params;
+		num = Number(num);
+		size = Number(size);
+		if (size > 100) size = 100;
+		const offset = (num - 1) * size;
+		const list = await orm(c).select().from(account).where(and(eq(account.userId, userId), eq(account.isPool, 1), eq(account.isDel, isDel.NORMAL))).limit(size).offset(offset).all();
+		const { total } = await orm(c).select({ total: count() }).from(account).where(and(eq(account.userId, userId), eq(account.isPool, 1), eq(account.isDel, isDel.NORMAL))).get();
+		return { list, total };
+	},
+
+	async deletePool(c, params, userId) {
+		const { accountIds } = params;
+		const idList = accountIds.split(',').map(Number);
+		await orm(c).update(account).set({ isDel: isDel.DELETE }).where(and(eq(account.userId, userId), inArray(account.accountId, idList), eq(account.isPool, 1))).run();
+	},
+
+	async clearPool(c, userId) {
+		await orm(c).update(account).set({ isDel: isDel.DELETE }).where(and(eq(account.userId, userId), eq(account.isPool, 1))).run();
+	},
+
+	async batchGenerate(c, params, userId) {
+		const { prefix, length, count: genCount, domain } = params;
+		const { minEmailPrefix, emailPrefixFilter } = await settingService.query(c);
+
+		if (genCount > 100) throw new BizError(t('batchLimit')); // 限制一次最多生成 100 个
+
+		const userRow = await userService.selectById(c, userId);
+		const roleRow = await roleService.selectById(c, userRow.type);
+
+		if (userRow.email !== c.env.admin) {
+			if (roleRow.accountCount > 0) {
+				const userAccountCount = await this.countUserAccount(c, userId);
+				if (userAccountCount + genCount > roleRow.accountCount) throw new BizError(t('accountLimit'));
+			}
+			if (!roleService.hasAvailDomainPerm(roleRow.availDomain, `@${domain}`)) {
+				throw new BizError(t('noDomainPermAdd'));
+			}
+		}
+
+		const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+		const list = [];
+		const accountEmails = [];
+
+		for (let i = 0; i < genCount; i++) {
+			let randomStr = '';
+			for (let j = 0; j < length; j++) {
+				randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+			}
+			const emailName = prefix + randomStr;
+			const email = `${emailName}@${domain}`;
+
+			if (emailName.length < minEmailPrefix) continue;
+			if (emailPrefixFilter.some(content => emailName.includes(content))) continue;
+
+			accountEmails.push({
+				email: email,
+				userId: userId,
+				name: emailName,
+				isPool: 1
+			});
+		}
+
+		if (accountEmails.length > 0) {
+			await orm(c).insert(account).values(accountEmails).run();
+		}
+
+		return { count: accountEmails.length };
 	}
 };
 

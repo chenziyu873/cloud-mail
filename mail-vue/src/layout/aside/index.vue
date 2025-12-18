@@ -31,6 +31,21 @@
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('settings')}}</span>
         </el-menu-item>
+        <el-menu-item @click="router.push({name: 'mailbox-pool'})" index="mailbox-pool"
+                      :class="route.meta.name === 'mailbox-pool' ? 'choose-item' : ''">
+          <Icon icon="ic:outline-Sd-storage" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 21px">{{$t('mailboxPool')}}</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'target-user'})" index="target-user"
+                      :class="route.meta.name === 'target-user' ? 'choose-item' : ''">
+          <Icon icon="mdi:account-group-outline" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 21px">{{$t('targetUserPool')}}</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'campaign'})" index="campaign"
+                      :class="route.meta.name === 'campaign' ? 'choose-item' : ''">
+          <Icon icon="mdi:email-send-outline" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 21px">{{$t('campaign')}}</span>
+        </el-menu-item>
         <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','analysis:query','reg-key:query']">
           <div>{{$t('manage')}}</div>
         </div>

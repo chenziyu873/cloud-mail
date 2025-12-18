@@ -22,6 +22,33 @@
 |--------------------------|--------------------------|
 | ![](/doc/demo/demo3.png) | ![](/doc/demo/demo4.png) |
 
+## 🚀 Fork Enhanced Features
+
+This fork introduces a powerful **Mailbox Pool & Automated Campaign System**:
+
+- **📧 Intelligent Mailbox Pool**: Batch generate internal accounts with random prefixes, managed separately from regular users.
+- **🎯 Target User Matrix**: Import tens of thousands of external contacts (QQ, Gmail, etc.) from TXT/JSON files instantly.
+- **🔥 Automated Batch Campaigns**:
+  - Physical-level deduplication via `(sender account, receiver)` logs, ensuring "one account contacts one target only once".
+  - High-performance sharded execution architecture.
+  - Supports multi-round campaigns, automatically utilizing new pool accounts.
+
+## 🛠️ Update/Installation Required Actions
+
+> [!IMPORTANT]
+> Since we introduced pool and log tracking, you **MUST** execute the following DDL in your Cloudflare D1 console:
+> ```sql
+> -- 1. Extend account pool flag
+> ALTER TABLE account ADD COLUMN is_pool INTEGER DEFAULT 0 NOT NULL;
+> -- 2. Create target user table
+> CREATE TABLE target_user (target_user_id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, user_id INTEGER NOT NULL, create_time TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL);
+> -- 3. Create send log table
+> CREATE TABLE send_log (send_log_id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, target_user_id INTEGER NOT NULL, user_id INTEGER NOT NULL, status INTEGER DEFAULT 0 NOT NULL, error TEXT, create_time TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL);
+> CREATE UNIQUE INDEX unique_account_target ON send_log(account_id, target_user_id);
+> ```
+
+---
+
 ## Features
 
 - **💰 Low-Cost Usage**: No server required — deploy to Cloudflare Workers to reduce costs.

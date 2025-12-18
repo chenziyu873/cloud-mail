@@ -1,8 +1,8 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import NProgress from 'nprogress';
-import {useUiStore} from "@/store/ui.js";
-import {useSettingStore} from "@/store/setting.js";
-import {cvtR2Url} from "@/utils/convert.js";
+import { useUiStore } from "@/store/ui.js";
+import { useSettingStore } from "@/store/setting.js";
+import { cvtR2Url } from "@/utils/convert.js";
 
 const routes = [
     {
@@ -48,6 +48,36 @@ const routes = [
                 meta: {
                     title: 'starred',
                     name: 'star',
+                    menu: true
+                }
+            },
+            {
+                path: '/mailbox-pool',
+                name: 'mailbox-pool',
+                component: () => import('@/views/pool/index.vue'),
+                meta: {
+                    title: 'mailboxPool',
+                    name: 'mailbox-pool',
+                    menu: true
+                }
+            },
+            {
+                path: '/target-user',
+                name: 'target-user',
+                component: () => import('@/views/target-user/index.vue'),
+                meta: {
+                    title: 'targetUserPool',
+                    name: 'target-user',
+                    menu: true
+                }
+            },
+            {
+                path: '/campaign',
+                name: 'campaign',
+                component: () => import('@/views/campaign/index.vue'),
+                meta: {
+                    title: 'campaign',
+                    name: 'campaign',
                     menu: true
                 }
             },
@@ -99,7 +129,7 @@ router.beforeEach((to, from, next) => {
     const token = localStorage.getItem('token')
 
     if (!token && to.name !== 'login') {
-        return next({name: 'login'})
+        return next({ name: 'login' })
     }
 
     if (!token && to.name === 'login') {

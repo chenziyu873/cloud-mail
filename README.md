@@ -29,6 +29,33 @@
 
 
 
+## 🚀 本 Fork 增强功能 (Enhanced Features)
+
+本项目在原版基础上深度定制了**高效邮件号池与自动化营销系统**：
+
+- **📧 智能邮箱号池**：支持批量生成带有随机后缀的内部号池账号，独立管理，不干扰普通用户。
+- **🎯 目标用户矩阵**：支持从 TXT/JSON 文件一键导入万级外部联系人（如 QQ、Gmail 列表）。
+- **🔥 自动化批量群发**：
+  - 基于 `(发件号, 收件人)` 的物理级去重，严格保证“一号一目标仅联系一次”。
+  - 高性能分片发送架构，轻松驾驭数千封邮件任务。
+  - 支持多轮追加发送，自动利用号池新账号接力。
+
+## 🛠️ 更新/安装额外操作 (Required Actions)
+
+> [!IMPORTANT]
+> 由于引入了号池与日志追踪，**必须**在 Cloudflare D1 控制台执行以下 DDL 初始化数据库：
+> ```sql
+> -- 1. 扩展原始号池标识
+> ALTER TABLE account ADD COLUMN is_pool INTEGER DEFAULT 0 NOT NULL;
+> -- 2. 创建目标用户表
+> CREATE TABLE target_user (target_user_id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, user_id INTEGER NOT NULL, create_time TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL);
+> -- 3. 创建发送日志表
+> CREATE TABLE send_log (send_log_id INTEGER PRIMARY KEY AUTOINCREMENT, account_id INTEGER NOT NULL, target_user_id INTEGER NOT NULL, user_id INTEGER NOT NULL, status INTEGER DEFAULT 0 NOT NULL, error TEXT, create_time TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL);
+> CREATE UNIQUE INDEX unique_account_target ON send_log(account_id, target_user_id);
+> ```
+
+---
+
 ## 功能介绍
 
 - **💰 低成本使用**： 可部署到 Cloudflare Workers 降低服务器成本

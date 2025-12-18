@@ -27,3 +27,23 @@ app.put('/account/setAllReceive', async (c) => {
 	await accountService.setAllReceive(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
 });
+
+app.get('/account/pool/list', async (c) => {
+	const data = await accountService.poolList(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
+app.delete('/account/pool/delete', async (c) => {
+	await accountService.deletePool(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
+app.delete('/account/pool/clear', async (c) => {
+	await accountService.clearPool(c, userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
+app.post('/account/batch-generate', async (c) => {
+	const data = await accountService.batchGenerate(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
