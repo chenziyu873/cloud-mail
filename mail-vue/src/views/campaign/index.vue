@@ -40,7 +40,9 @@
           <el-input v-model="form.subject" :placeholder="$t('subject')" />
         </el-form-item>
         <el-form-item :label="$t('content')">
-           <tinyEditor ref="editorRef" :def-value="''" @change="handleEditorChange" />
+           <div style="height: 400px; width: 100%;">
+             <tinyEditor ref="editorRef" :def-value="''" @change="handleEditorChange" />
+           </div>
         </el-form-item>
         
         <el-row :gutter="20">
